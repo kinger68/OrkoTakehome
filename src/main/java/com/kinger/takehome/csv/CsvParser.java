@@ -10,11 +10,8 @@ import java.util.stream.Stream;
 
 public class CsvParser {
     private final Stream<String> csvFileStream;
-    private final ColumnHeader headers;
-
-    // Using a record removes boilerplate constructor and field initialization
-    private record ColumnHeader(Map<String, Integer> header, String headerLine) {
-    }
+    private final Row headers;
+    private final List<Row> bodyElements;
 
     public static CsvParser parse(final File file) throws IOException {
         return new CsvParser(file);
@@ -23,15 +20,44 @@ public class CsvParser {
     public CsvParser(File csvFile) throws IOException {
         this.csvFileStream = Files.lines(csvFile.toPath());
         this.headers = createHeader(Files.lines(csvFile.toPath()).findFirst().get());
-        Files.lines(csvFile.toPath()).forEach(System.out::println);
+        this.bodyElements = createBodyElements(Files.lines(csvFile.toPath())
+                .skip(1)
+                .toList());
+    }
+
+    // Create a list of records containing each row in the CSV that is not the line
+    private List<Row> createBodyElements(List<String> csvBody) {
+        List<Row> bodyElements = new ArrayList<>();
+        for (String bodyElement : csvBody) {
+            List<String> parsedRow = parseLine(bodyElement);
+            Map<Integer, String> rowElements = new HashMap<>();
+            for (int i = 0; i < parsedRow.size(); i++) {
+                rowElements.put(i, parsedRow.get(i));
+            }
+            bodyElements.add(new Row(rowElements, bodyElement));
+        }
+        return bodyElements;
     }
 
     public String getHeader() {
-        return this.headers.headerLine;
+        return this.headers.rowLine();
     }
 
-    public Map<String, Integer> getHeaderMap() {
-        return this.headers.header;
+    public Map<Integer, String> getHeaderMap() {
+        return this.headers.line();
+    }
+
+    public ListIterator<Row> getBody() {
+        return this.bodyElements.listIterator();
+    }
+
+    public int getNumberOfRows() {
+        return this.bodyElements.size();
+    }
+
+    public void sort(int whichColumn) {
+        String columnToSortBy = getHeaderMap().get(whichColumn);
+        System.out.println("Column Header to sort by is " + columnToSortBy);
     }
 
     public List<String> parseLine(String csvDelimitedString) {
@@ -55,16 +81,16 @@ public class CsvParser {
         return false;
     }
 
-    private ColumnHeader createHeader(String headerLine) {
+    private Row createHeader(String headerLine) {
         List<String> headerList = parseLine(headerLine);
         if(hasEmptyElements(headerList)) throw new InvalidParameterException("Header row cannot have empty columns");
         if(hasDuplicateElements(headerList)) throw new InvalidParameterException("Header row cannot have duplicate columns");
 
-        Map<String, Integer> header = new HashMap<>();
+        Map<Integer, String> header = new HashMap<>();
         for (int i = 0; i < headerList.size(); i++) {
-            header.put(headerList.get(i), i);
+            header.put(i, headerList.get(i));
         }
-        return new ColumnHeader(header, headerLine);
+        return new Row(header, headerLine);
     }
 
 }
