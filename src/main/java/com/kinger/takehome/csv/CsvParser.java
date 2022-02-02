@@ -55,9 +55,12 @@ public class CsvParser {
         return this.bodyElements.size();
     }
 
-    public void sort(int whichColumn) {
-        String columnToSortBy = getHeaderMap().get(whichColumn);
-        System.out.println("Column Header to sort by is " + columnToSortBy);
+    public ListIterator<Row> sort(int whichColumn) {
+        // What if the column number is > size of the number of columns
+        if(whichColumn >= getHeaderMap().size()) throw new InvalidParameterException("Sort column number exceeds number of columns in file");
+        return bodyElements.stream()
+                .sorted(Comparator.comparing(i -> i.line().get(whichColumn), Comparator.reverseOrder()))
+                .toList().listIterator();
     }
 
     public List<String> parseLine(String csvDelimitedString) {
